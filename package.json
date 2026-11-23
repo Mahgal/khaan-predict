@@ -1,0 +1,18 @@
+{
+  "name": "khaan-predict",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anchor-lang/core": "^1.2.2",
+    "@pm-amm/sdk": "^0.2.0",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.99.0"
+  }
+}
