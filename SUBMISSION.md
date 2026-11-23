@@ -7,7 +7,7 @@
 - **Build week:** starts 2026-12-01. Submit as soon as ready — do not wait for the deadline.
 - **Tracks:** main track ($100,000: 1st $50k / 2nd $30k / 3rd $20k) + Best use of the
   pm-AMM ($1,000 investment + support to raise up to $25,000 on Backable, PREDICT Spark).
-- **Repo:** (public GitHub repo — to be created, see below)
+- **Repo:** https://github.com/Mahgal/khaan-predict (public, main branch, pushed 2026-11-24)
 - **Dashboard:** https://khaan-predict.pages.dev/ (live since 2026-11-23; empty state until the agent's first on-chain run — blocked on devnet SOL, see below)
 - **Demo video:** (to be recorded, see DEMO_SCRIPT.md)
 
@@ -93,7 +93,7 @@ self-funding: the more people trade its markets, the more it earns.
 ## Submission checklist (2026-11-24 ~03:50 CST)
 
 - [ ] Agent runs end-to-end on devnet (create → trade → resolve → claim) — CODE READY, BLOCKED on devnet SOL (see below). Run: `node agent.cjs smoke`, then `node agent.cjs run`, then `node agent.cjs resolve`.
-- [ ] Public GitHub repo with README — LOCAL GIT READY (2 commits: d7d5946, 7f9809b). Remote `Mahgal/khaan-predict` to create (API+PAT or web), then push via SSH.
+- [x] Public GitHub repo with README — LIVE at https://github.com/Mahgal/khaan-predict (public, main branch, pushed 2026-11-24).
 - [x] Dashboard deployed (Pages URL) — LIVE at https://khaan-predict.pages.dev/ (deployment 56697ad4, 2026-11-23, 200 verified). Shows empty state until the agent runs; redeploy after the first on-chain run to publish real data.
 - [ ] Demo video recorded (60–90 s) — SCRIPT READY (DEMO_SCRIPT.md). Record after the agent has real markets to show.
 - [ ] Submission filed on hackathons.solana.com — TODO (window opens Dec 1; see below).
