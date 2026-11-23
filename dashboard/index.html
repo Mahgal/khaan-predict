@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khaan Predict — an AI agent that runs prediction markets on the pm-AMM</title>
+<style>
+  :root { --bg:#0b0e14; --card:#121826; --line:#1f2a3d; --text:#e6e9f0; --mut:#8b94a7; --acc:#4ade80; --warn:#fbbf24; --link:#7dd3fc; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { max-width:960px; margin:0 auto; padding:32px 20px 8px; }
+  h1 { font-size:28px; margin:0 0 6px; }
+  h1 span { color:var(--acc); }
+  p.sub { color:var(--mut); margin:0 0 4px; line-height:1.5; }
+  main { max-width:960px; margin:0 auto; padding:12px 20px 40px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .stat b { display:block; font-size:24px; }
+  .stat span { color:var(--mut); font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:12px 0; }
+  .card h2 { margin:0 0 4px; font-size:18px; }
+  .card h2 a { color:var(--link); text-decoration:none; }
+  .meta { color:var(--mut); font-size:13px; line-height:1.6; }
+  .meta b { color:var(--text); }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--mut); margin-right:6px; }
+  .pill.yes { color:var(--acc); border-color:var(--acc); }
+  .pill.no { color:var(--warn); border-color:var(--warn); }
+  .reason { background:#0d1320; border-left:3px solid var(--acc); padding:10px 12px; margin:10px 0 0; color:#c9d1e0; font-size:14px; line-height:1.5; }
+  a { color:var(--link); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; }
+  footer { max-width:960px; margin:0 auto; padding:0 20px 32px; color:var(--mut); font-size:13px; line-height:1.6; }
+  .empty { color:var(--mut); padding:24px 0; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Khaan Predict <span>— the agent that runs its own prediction markets</span></h1>
+  <p class="sub">An autonomous AI agent on Solana's pm-AMM (devnet). It predicts, creates
+  markets, trades them, resolves them — and shows its work. Every market, every
+  trade, every reason, every on-chain signature.</p>
+  <p class="sub" id="updated">Loading…</p>
+</header>
+<main>
+  <div class="grid" id="stats"></div>
+  <h2>Markets</h2>
+  <div id="markets"><p class="empty">Loading markets…</p></div>
+  <h2>Trades</h2>
+  <div id="trades"><p class="empty">Loading trades…</p></div>
+</main>
+<footer>
+  Built on the <a href="https://predict-pm-amm.dev" target="_blank" rel="noopener">pm-AMM</a>
+  (Paradigm's uniform AMM for outcome tokens) — program
+  <code>GV1FMGHRYBjQLaghE5fnGuYCuCcpdt3GD5xEX3TwN16y</code>, devnet, mock USDC.
+  Trade the agent's markets in one tap (burner wallet) on the
+  <a href="https://pm-amm-devnet.vercel.app" target="_blank" rel="noopener">pm-AMM reference app</a>.
+  Source: <a href="https://github.com/Mahgal/khaan-predict" target="_blank" rel="noopener">github.com/Mahgal/khaan-predict</a>.
+  Devnet only — test money, no real value.
+</footer>
+<script>
+const SOLSCAN = "https://solscan.io";
+async function load() {
+  let data = { markets: [], trades: [] };
+  try {
+    const r = await fetch("data.json", { cache: "no-store" });
+    if (r.ok) data = await r.json();
+  } catch (e) { /* empty state */ }
+  const markets = data.markets || [];
+  const trades = data.trades || [];
+  const volume = trades.reduce((a, t) => a + (t.amountUsdc || 0), 0);
+  const fees = trades.reduce((a, t) => a + (t.fee || 0), 0);
+  document.getElementById("updated").textContent =
+    "Last updated " + (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—") +
+    " · Agent wallet " + (data.wallet || "—") + " · devnet";
+  document.getElementById("stats").innerHTML = [
+    [markets.length, "markets created"],
+    [trades.length, "trades executed"],
+    [volume.toFixed(2) + " mUSDC", "volume"],
+    [fees.toFixed(4) + " mUSDC", "fees paid"],
+    [markets.filter(m => m.resolved).length, "markets resolved"],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  const mEl = document.getElementById("markets");
+  if (!markets.length) {
+    mEl.innerHTML = '<p class="empty">No markets yet — the agent is still setting up. Check back soon.</p>';
+  } else {
+    mEl.innerHTML = markets.slice().reverse().map(m => `
+      <div class="card">
+        <h2><a href="https://pm-amm-devnet.vercel.app/market/${m.marketId}" target="_blank" rel="noopener">${esc(m.question || m.name)}</a></h2>
+        <div class="meta">
+          <span class="pill ${m.side === "yes" ? "yes" : "no"}">agent: ${esc(m.side || "?").toUpperCase()} ${m.probability != null ? m.probability + "%" : ""}</span>
+          <span class="pill">${m.resolved ? "resolved: " + esc(m.outcome || "?") : "open"}</span>
+          <span class="pill">ends ${m.endTs ? new Date(m.endTs * 1000).toLocaleString() : "—"}</span><br>
+          Market <b>#${m.marketId}</b> · PDA <code>${esc(m.marketPda || "")}</code><br>
+          <a href="${SOLSCAN}/tx/${m.createdSig}?cluster=devnet" target="_blank" rel="noopener">create tx</a>
+          ${m.resolveSig ? ` · <a href="${SOLSCAN}/tx/${m.resolveSig}?cluster=devnet" target="_blank" rel="noopener">resolve tx</a>` : ""}
+          ${m.claimSig ? ` · <a href="${SOLSCAN}/tx/${m.claimSig}?cluster=devnet" target="_blank" rel="noopener">claim tx</a>` : ""}
+        </div>
+        ${m.reasoning ? `<div class="reason">“${esc(m.reasoning)}”</div>` : ""}
+      </div>`).join("");
+  }
+  const tEl = document.getElementById("trades");
+  if (!trades.length) {
+    tEl.innerHTML = '<p class="empty">No trades yet.</p>';
+  } else {
+    tEl.innerHTML = `<div class="card"><table><tr><th>When</th><th>Market</th><th>Trade</th><th>Got</th><th>Fee</th><th>Tx</th></tr>` +
+      trades.slice().reverse().map(t => `<tr>
+        <td>${t.at ? new Date(t.at).toLocaleString() : "—"}</td>
+        <td>#${(markets.find(m => m.marketPda === t.marketPda) || {}).marketId || ""}</td>
+        <td>${esc(t.direction)} ${t.amountUsdc} mUSDC</td>
+        <td>${(t.out || 0).toFixed(2)}</td>
+        <td>${(t.fee || 0).toFixed(4)}</td>
+        <td><a href="${SOLSCAN}/tx/${t.signature}?cluster=devnet" target="_blank" rel="noopener">solscan</a></td>
+      </tr>`).join("") + "</table></div>";
+  }
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+load();
+</script>
+</body>
+</html>

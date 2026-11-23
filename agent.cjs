@@ -101,6 +101,18 @@ function loadState() {
 function saveState(s) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
+  // dashboard copy (public): markets + trades + wallet + timestamp, no keys
+  let wallet = "";
+  try {
+    const kp = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"))));
+    wallet = kp.publicKey.toBase58();
+  } catch {}
+  const dashDir = path.join(__dirname, "dashboard");
+  fs.mkdirSync(dashDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dashDir, "data.json"),
+    JSON.stringify({ wallet, updatedAt: new Date().toISOString(), markets: s.markets, trades: s.trades }, null, 2),
+  );
 }
 
 function logEvent(ev) {
