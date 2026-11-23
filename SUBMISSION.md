@@ -8,7 +8,7 @@
 - **Tracks:** main track ($100,000: 1st $50k / 2nd $30k / 3rd $20k) + Best use of the
   pm-AMM ($1,000 investment + support to raise up to $25,000 on Backable, PREDICT Spark).
 - **Repo:** (public GitHub repo — to be created, see below)
-- **Dashboard:** (Pages URL — to be deployed, see below)
+- **Dashboard:** https://khaan-predict.pages.dev/ (live since 2026-11-23; empty state until the agent's first on-chain run — blocked on devnet SOL, see below)
 - **Demo video:** (to be recorded, see DEMO_SCRIPT.md)
 
 ## What it is
@@ -90,14 +90,14 @@ with the agent as market-maker and the dashboard as the public track record.
 The pm-AMM's creator-fee split (50% of every swap fee) makes the agent
 self-funding: the more people trade its markets, the more it earns.
 
-## Submission checklist
+## Submission checklist (2026-11-24 ~03:50 CST)
 
-- [ ] Agent runs end-to-end on devnet (create → trade → resolve → claim) — DONE / TODO
-- [ ] Public GitHub repo with README — TODO (local git ready, remote to create)
-- [ ] Dashboard deployed (Pages URL) — TODO
-- [ ] Demo video recorded (60–90 s) — TODO (script in DEMO_SCRIPT.md)
-- [ ] Submission filed on hackathons.solana.com — TODO (window opens Dec 1; see below)
-- [ ] Traction numbers filled in above from data/state.json — TODO (needs devnet SOL)
+- [ ] Agent runs end-to-end on devnet (create → trade → resolve → claim) — CODE READY, BLOCKED on devnet SOL (see below). Run: `node agent.cjs smoke`, then `node agent.cjs run`, then `node agent.cjs resolve`.
+- [ ] Public GitHub repo with README — LOCAL GIT READY (2 commits: d7d5946, 7f9809b). Remote `Mahgal/khaan-predict` to create (API+PAT or web), then push via SSH.
+- [x] Dashboard deployed (Pages URL) — LIVE at https://khaan-predict.pages.dev/ (deployment 56697ad4, 2026-11-23, 200 verified). Shows empty state until the agent runs; redeploy after the first on-chain run to publish real data.
+- [ ] Demo video recorded (60–90 s) — SCRIPT READY (DEMO_SCRIPT.md). Record after the agent has real markets to show.
+- [ ] Submission filed on hackathons.solana.com — TODO (window opens Dec 1; see below).
+- [ ] Traction numbers filled in above from data/state.json — TODO (needs devnet SOL).
 
 ## Submission entry (to confirm when the window opens)
 
@@ -109,11 +109,11 @@ user step — prepare everything so it is one click.
 
 ## Blockers / notes
 
-- **Devnet SOL is the gating item.** mUSDC 1,000 funded via the pm-AMM faucet.
-  SOL is 0: the public RPC airdrop is closed (410 Gone), the pm-AMM faucet
-  dripped 0 SOL (likely not enabled until the hackathon starts Dec 1), Ankr and
-  Alchemy demo RPC airdrops failed. Fix: claim devnet SOL from the official
-  Solana faucet (faucet.solana.com) via a browser task for wallet
-  `B3u1b3WPhhzJ5y67Jt4tNAZrsP3nDJuijSpj83HrjGqw`.
+- **Devnet SOL is the gating item (verified 2026-11-24 ~04:00 CST).** mUSDC 1,000 funded via the pm-AMM faucet (wallet `B3u1b3WPhhzJ5y67Jt4tNAZrsP3nDJuijSpj83HrjGqw`, 1 on-chain tx). SOL is 0:
+  - pm-AMM faucet returns `{"ok":true,"amount":1000,"sol":0,"solSkipped":"reserve"}` — its SOL reserve is dry (verified with two wallets). Retry after each wallet's 1h cooldown; the reserve may refill.
+  - Public RPC airdrop is closed (`410 Gone` from api.devnet.solana.com).
+  - Ankr needs an API key; Alchemy demo 429; OnFinality rejects requestAirdrop (-32600); rpcpool/GenesysGo/ExtrNode not usable.
+  - Official faucet (faucet.solana.com) now requires GitHub sign-in + Turnstile captcha — a browser/human step, not scriptable.
+  - Fix paths in order: (1) retry the pm-AMM faucet when the cooldown resets (~20:43 UTC for the main wallet, ~20:52 UTC for the spare `grG9bAx94BLLjoLwoqMk3TdkzJQEUTrRPBvngC1woXf`); (2) browser task on faucet.solana.com (GitHub auth is a user step); (3) ask the organisers (Telegram @mathis_btc) as the kit docs suggest.
 - No mainnet, no real SOL, no real money — by design. Devnet only.
 - Agent wallet is a devnet-only test keypair (gitignored, never reuse on mainnet).

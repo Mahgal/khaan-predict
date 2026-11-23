@@ -1,4 +1,6 @@
 node_modules/
 agent-wallet.json
+agent-wallet-fresh.json
+data/
 *.log
 .DS_Store

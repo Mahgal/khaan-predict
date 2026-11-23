@@ -4,6 +4,7 @@
 // CommonJS (see predict-pm-amm.dev/hackathon.md: @anchor-lang/core is CJS).
 //
 // Commands:
+//   node agent.cjs fund     — claim the pm-AMM faucet once (mUSDC + SOL drip if enabled)
 //   node agent.cjs setup    — create the devnet wallet + fund it via the faucet
 //   node agent.cjs smoke    — create one test market + buy YES (end-to-end check)
 //   node agent.cjs run      — full cycle: prices -> predict -> create -> trade -> log
@@ -72,15 +73,43 @@ async function ensureUsdc(conn, owner) {
   if (body.sol) console.log(`faucet also sent ${body.sol} devnet SOL`);
 }
 
+async function claimFaucet(pubkey) {
+  // The pm-AMM faucet gives 1,000 mUSDC and drips devnet SOL to low wallets
+  // when its reserve allows (response: {ok, signature, amount, sol, solSkipped}).
+  // 1 claim per wallet per hour; a 429/error body says how long to wait.
+  const res = await fetch(`${APP}/api/faucet`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ wallet: pubkey.toBase58() }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: body.error || `faucet ${res.status}` };
+  return { ok: true, signature: body.signature, sol: body.sol || 0, solSkipped: body.solSkipped || null };
+}
+
 async function ensureSol(conn, pubkey) {
   const bal = await conn.getBalance(pubkey);
   if (bal >= 0.05 * LAMPORTS_PER_SOL) return bal;
-  console.log("requesting a devnet SOL airdrop…");
+  // 1) pm-AMM faucet (documented headless path; drips SOL when its reserve allows)
+  console.log("wallet is low on SOL — claiming the pm-AMM faucet (also drips SOL)…");
+  const f = await claimFaucet(pubkey);
+  if (f.ok && f.sol > 0) {
+    await conn.confirmTransaction(f.signature, "confirmed");
+    console.log(`faucet sent ${f.sol} devnet SOL`);
+    return conn.getBalance(pubkey);
+  }
+  if (f.ok) console.log(`faucet gave mUSDC but no SOL (solSkipped: ${f.solSkipped || "n/a"}) — trying the RPC airdrop…`);
+  else console.log(`faucet unavailable (${f.error}) — trying the RPC airdrop…`);
+  // 2) RPC airdrop (api.devnet.solana.com closed its faucet with 410; other RPCs vary)
   try {
     const sig = await conn.requestAirdrop(pubkey, 1 * LAMPORTS_PER_SOL);
     await conn.confirmTransaction(sig, "confirmed");
   } catch (e) {
-    console.error(`airdrop refused (${e.message.split("\n")[0]}). Get SOL another way, then re-run.`);
+    console.error(`no devnet SOL available right now.`);
+    console.error(`- pm-AMM faucet: ${f.ok ? `no SOL drip (solSkipped: ${f.solSkipped || "n/a"})` : f.error} — retry after its 1h cooldown; the reserve may refill.`);
+    console.error(`- RPC airdrop: ${e.message.split("\n")[0]}`);
+    console.error(`- last resort: https://faucet.solana.com (needs GitHub sign-in + captcha — a human/browser step).`);
+    console.error(`Fix the SOL, then re-run. The mUSDC is already funded.`);
     process.exit(1);
   }
   return conn.getBalance(pubkey);
@@ -250,6 +279,20 @@ async function cmdSetup() {
   console.log(`balance ${(sol / LAMPORTS_PER_SOL).toFixed(3)} SOL · ${await usdcBalance(conn, kp.publicKey)} mUSDC`);
 }
 
+async function cmdFund() {
+  const kp = loadWallet();
+  console.log(`wallet ${kp.publicKey.toBase58()}`);
+  const f = await claimFaucet(kp.publicKey);
+  console.log(JSON.stringify(f, null, 2));
+  if (f.ok && f.signature) {
+    const conn = new Connection(RPC, "confirmed");
+    await conn.confirmTransaction(f.signature, "confirmed");
+    console.log(
+      `balance ${(await conn.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL} SOL · ${await usdcBalance(conn, kp.publicKey)} mUSDC`,
+    );
+  }
+}
+
 async function cmdSmoke() {
   const conn = new Connection(RPC, "confirmed");
   const kp = loadWallet();
@@ -374,12 +417,13 @@ async function client_fetchMarket(conn, pda) {
 
 async function main() {
   const cmd = process.argv[2] || "status";
+  if (cmd === "fund") return cmdFund();
   if (cmd === "setup") return cmdSetup();
   if (cmd === "smoke") return cmdSmoke();
   if (cmd === "run") return cmdRun();
   if (cmd === "resolve") return cmdResolve();
   if (cmd === "status") return cmdStatus();
-  console.error("usage: node agent.cjs <setup|smoke|run|resolve|status>");
+  console.error("usage: node agent.cjs <fund|setup|smoke|run|resolve|status>");
   process.exit(1);
 }
 
